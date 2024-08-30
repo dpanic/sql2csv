@@ -71,7 +71,10 @@ def process():
 
     input_file = sys.argv[1]
     output_dir = os.path.splitext(input_file)[0] + '_csv_output'
-    shutil.rmtree(output_dir)
+    try:
+        shutil.rmtree(output_dir)
+    except:
+        pass
     os.makedirs(output_dir, exist_ok=True)
 
     table_structures = {}
