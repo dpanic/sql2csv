@@ -2,6 +2,7 @@ import os
 import sys
 import csv
 import shutil
+import chardet
 
 def extract_column_names(line):
     line = line.split(" ")[0] 
@@ -49,20 +50,26 @@ def parse_sql_insert(insert_line):
         print(f"Error parsing line: {insert_line}")
         raise e
 
-def count_lines_in_file(filename):
+def count_lines_in_file(filename, encoding):
     count_file = filename + '.count'
     if os.path.exists(count_file):
         with open(count_file, 'r') as f:
             total_lines = int(f.read().strip())
     else:
         total_lines = 0
-        with open(filename, 'r', encoding='utf-8', errors='replace') as f:
+        with open(filename, 'r', encoding=encoding, errors='replace') as f:
             for _ in f:
                 total_lines += 1
         with open(count_file, 'w') as f:
             f.write(str(total_lines))
     return total_lines
 
+def detect_encoding(filename):
+    # Detect the encoding using chardet
+    with open(filename, 'rb') as f:
+        rawdata = f.read()
+    result = chardet.detect(rawdata)
+    return result['encoding']
 
 def process():
     if len(sys.argv) != 2:
@@ -71,11 +78,16 @@ def process():
 
     input_file = sys.argv[1]
     output_dir = os.path.splitext(input_file)[0] + '_csv_output'
+    
     try:
         shutil.rmtree(output_dir)
     except:
         pass
     os.makedirs(output_dir, exist_ok=True)
+
+    # Detect file encoding
+    file_encoding = detect_encoding(input_file)
+    print(f"Detected file encoding: {file_encoding}")
 
     table_structures = {}
     buffer_size = 1000
@@ -84,13 +96,17 @@ def process():
     insert_accumulator = ""
     in_insert_statement = False
     fds = {}
-    total_lines = count_lines_in_file(input_file)
+    total_lines = count_lines_in_file(input_file, file_encoding)
     stats_point = int(total_lines / 100)
+    table_name = None  # Initialize table_name to avoid UnboundLocalError
 
-    with open(input_file, 'r', encoding='utf-8', errors='replace') as infile:
+    with open(input_file, 'r', encoding=file_encoding, errors='replace') as infile:
         for line in infile:
             line_count += 1
             line = line.strip()
+
+            if line.startswith('--') or line == "":
+                continue
 
             if line.startswith("CREATE TABLE"):
                 table_name = line.split()[2].strip('`')
@@ -134,7 +150,8 @@ def process():
                         print(f"Warning: No structure found for table {table_name}")
             
             if line_count % stats_point == 0:
-               print(f"Processed {line_count} lines out of {total_lines} ({(line_count / total_lines) * 100:.0f}%)... [current table: {table_name}] ")
+                current_table = table_name if table_name else "Unknown"
+                print(f"Processed {line_count} lines out of {total_lines} ({(line_count / total_lines) * 100:.0f}%)... [current table: {current_table}] ")
 
         if len(buffer) > 0:
             csv_writer = fds[table_name]
