@@ -64,11 +64,10 @@ def count_lines_in_file(filename, encoding):
             f.write(str(total_lines))
     return total_lines
 
-def detect_encoding(filename):
-    # Detect the encoding using chardet
+def detect_encoding(filename, size=1024*1024):
     with open(filename, 'rb') as f:
-        rawdata = f.read()
-    result = chardet.detect(rawdata)
+        raw_data = f.read(size)  # Read only up to 'size' bytes
+    result = chardet.detect(raw_data)
     return result['encoding']
 
 def process():
@@ -100,8 +99,8 @@ def process():
     stats_point = int(total_lines / 100)
     table_name = None  # Initialize table_name to avoid UnboundLocalError
 
-    with open(input_file, 'r', encoding=file_encoding, errors='replace') as infile:
-        for line in infile:
+    with open(input_file, 'r', encoding=file_encoding, errors='replace') as in_file:
+        for line in in_file:
             line_count += 1
             line = line.strip()
 
