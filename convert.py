@@ -146,8 +146,25 @@ def process():
                             csv_writer = fds[table_name]
                             write_buffer_to_csv(buffer, csv_writer)
                     else:
-                        print(f"Warning: No structure found for table {table_name}")
-            
+                        # Fallback mechanism when no structure is detected
+                        if table_name not in fds:
+                            # Open new CSV file and create a dynamic header
+                            output_file = os.path.join(output_dir, f"{table_name}_fallback.csv")
+                            csv_file = open(output_file, 'w', newline='', encoding='utf-8')
+                            csv_writer = csv.writer(csv_file, delimiter='\t')
+
+                            # Create header dynamically based on field count in parsed_data
+                            max_fields = max(len(row) for row in parsed_data)
+                            dynamic_header = [f"field_{i+1}" for i in range(max_fields)]
+                            csv_writer.writerow(dynamic_header)
+                            fds[table_name] = csv_writer
+
+                        buffer.extend(parsed_data)
+
+                        if len(buffer) > buffer_size:
+                            csv_writer = fds[table_name]
+                            write_buffer_to_csv(buffer, csv_writer)
+
             if line_count % stats_point == 0:
                 current_table = table_name if table_name else "Unknown"
                 print(f"Processed {line_count} lines out of {total_lines} ({(line_count / total_lines) * 100:.0f}%)... [current table: {current_table}] ")
