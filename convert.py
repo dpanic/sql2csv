@@ -16,7 +16,7 @@ def write_buffer_to_csv(buffer, csv_writer):
 
 def parse_sql_insert(insert_line):
     try:
-        table_name, values_part = insert_line.split(" VALUES ", 1)
+        table_name, values_part = insert_line.split(" VALUES", 1)
         table_name = table_name.split()[2].strip('`')
 
         values_part = values_part.rstrip(";")  # Remove the trailing semicolon
